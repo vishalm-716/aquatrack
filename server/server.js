@@ -20,6 +20,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/surveys', require('./routes/surveys'));
+app.use('/api/sites', require('./routes/sites'));
 app.use('/api/species', require('./routes/species'));
 app.use('/api/restoration', require('./routes/restoration'));
 app.use('/api/dashboard', require('./routes/dashboard'));

@@ -1,15 +1,15 @@
 const express = require('express');
 const { body } = require('express-validator');
 const {
-  getSurveys, getSurveyById, createSurvey, updateSurvey, deleteSurvey
+  getSurveys, getSurveyById, createSurvey, updateSurvey, deleteSurvey, verifySurvey
 } = require('../controllers/surveyController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, optionalAuth, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 const router = express.Router();
 
-router.get('/', getSurveys);
-router.get('/:id', getSurveyById);
+router.get('/', optionalAuth, getSurveys);
+router.get('/:id', optionalAuth, getSurveyById);
 
 router.post('/', protect, authorize('admin', 'researcher'), upload.single('photo'), [
   body('location').trim().notEmpty().withMessage('Location is required'),
@@ -21,6 +21,7 @@ router.post('/', protect, authorize('admin', 'researcher'), upload.single('photo
 ], createSurvey);
 
 router.put('/:id', protect, authorize('admin', 'researcher'), upload.single('photo'), updateSurvey);
+router.put('/:id/verify', protect, authorize('admin'), verifySurvey);
 router.delete('/:id', protect, authorize('admin'), deleteSurvey);
 
 module.exports = router;

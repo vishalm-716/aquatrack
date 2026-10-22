@@ -48,6 +48,7 @@ export const updateSurvey = (id, data) => {
   });
 };
 export const deleteSurvey = (id) => API.delete(`/surveys/${id}`);
+export const verifySurvey = (id, status) => API.put(`/surveys/${id}/verify`, { status });
 
 // Species
 export const getSpecies = (params) => API.get('/species', { params });
@@ -66,12 +67,20 @@ export const updateRestoration = (id, data) => {
   });
 };
 
+// Sites
+export const getSites = (params) => API.get('/sites', { params });
+export const getSiteById = (id) => API.get(`/sites/${id}`);
+export const createSite = (data) => API.post('/sites', data);
+
 // Dashboard
-export const getDashboardSummary = () => API.get('/dashboard/summary');
+export const getDashboardSummary = (params) => API.get('/dashboard/summary', { params });
 
 // Admin
 export const getUsers = () => API.get('/admin/users');
+export const getUserProfile = (id) => API.get(`/admin/users/${id}`);
 export const updateUserRole = (id, role) => API.put(`/admin/users/${id}/role`, { role });
 export const deleteUser = (id) => API.delete(`/admin/users/${id}`);
+export const getCommandCenterOverview = () => API.get('/admin/command-center');
+
 
 export default API;

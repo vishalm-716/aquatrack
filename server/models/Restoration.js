@@ -38,9 +38,29 @@ const restorationSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  siteId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    default: null
+  },
+  isDemo: {
+    type: Boolean,
+    default: false
+  },
+  isForeignLegacy: {
+    type: Boolean,
+    default: false
+  },
+  country: {
+    type: String,
+    default: 'India'
   }
 }, {
   timestamps: true
 });
+
+restorationSchema.index({ siteId: 1 });
+restorationSchema.index({ isForeignLegacy: 1 });
 
 module.exports = mongoose.model('Restoration', restorationSchema);

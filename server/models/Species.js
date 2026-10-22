@@ -30,6 +30,23 @@ const speciesSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Survey',
     default: null
+  },
+  siteId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    default: null
+  },
+  isDemo: {
+    type: Boolean,
+    default: false
+  },
+  isForeignLegacy: {
+    type: Boolean,
+    default: false
+  },
+  country: {
+    type: String,
+    default: 'India'
   }
 }, {
   timestamps: true
@@ -37,6 +54,7 @@ const speciesSchema = new mongoose.Schema({
 
 speciesSchema.index({ type: 1 });
 speciesSchema.index({ location: 1 });
+speciesSchema.index({ isForeignLegacy: 1 });
 speciesSchema.index({ name: 'text', location: 'text' });
 
 module.exports = mongoose.model('Species', speciesSchema);

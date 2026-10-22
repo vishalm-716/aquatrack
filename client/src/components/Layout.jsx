@@ -1,6 +1,7 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Sidebar from './Sidebar';
+import WelcomeCard from './WelcomeCard';
 
 export function AppLayout() {
   const { user, loading } = useAuth();
@@ -22,12 +23,14 @@ export function AppLayout() {
       <Sidebar />
       <main className="app-main">
         <div className="page-content">
+          <WelcomeCard />
           <Outlet />
         </div>
       </main>
     </div>
   );
 }
+
 
 export function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth();

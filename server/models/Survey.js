@@ -53,12 +53,36 @@ const surveySchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'verified', 'rejected'],
     default: 'pending'
+  },
+  siteId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Site',
+    default: null
+  },
+  region: {
+    type: String,
+    default: ''
+  },
+  isDemo: {
+    type: Boolean,
+    default: false
+  },
+  isForeignLegacy: {
+    type: Boolean,
+    default: false
+  },
+  country: {
+    type: String,
+    default: 'India'
   }
 }, {
   timestamps: true
 });
 
+surveySchema.index({ siteId: 1, date: -1 });
+surveySchema.index({ region: 1, date: -1 });
 surveySchema.index({ location: 1, date: -1 });
 surveySchema.index({ surveyedBy: 1 });
+surveySchema.index({ isForeignLegacy: 1 });
 
 module.exports = mongoose.model('Survey', surveySchema);

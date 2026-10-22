@@ -3,12 +3,12 @@ const { body } = require('express-validator');
 const {
   getRestorations, createRestoration, updateRestoration
 } = require('../controllers/restorationController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, optionalAuth, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 const router = express.Router();
 
-router.get('/', getRestorations);
+router.get('/', optionalAuth, getRestorations);
 
 router.post('/', protect, authorize('admin', 'researcher'),
   upload.fields([

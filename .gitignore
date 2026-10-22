@@ -5,3 +5,11 @@ uploads/*
 !uploads/.gitkeep
 .DS_Store
 *.log
+
+# Word documents and report scratch artifacts
+*.docx
+*.doc
+report_images/
+capture_screenshots.js
+generate_diagrams.js
+generate_report.py

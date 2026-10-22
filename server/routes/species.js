@@ -1,11 +1,11 @@
 const express = require('express');
 const { body } = require('express-validator');
 const { getSpecies, createSpecies } = require('../controllers/speciesController');
-const { protect, authorize } = require('../middleware/auth');
+const { protect, optionalAuth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/', getSpecies);
+router.get('/', optionalAuth, getSpecies);
 
 router.post('/', protect, authorize('admin', 'researcher'), [
   body('name').trim().notEmpty().withMessage('Species name is required'),

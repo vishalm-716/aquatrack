@@ -5,18 +5,31 @@ const Restoration = require('../models/Restoration');
 exports.getRestorations = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
+    const filter = { isForeignLegacy: { $ne: true } };
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    const total = await Restoration.countDocuments();
+    const total = await Restoration.countDocuments(filter);
 
-    const restorations = await Restoration.find()
-      .populate('loggedBy', 'name email')
+    const restorations = await Restoration.find(filter)
+      .populate('loggedBy', 'name email role')
       .populate('linkedSurvey', 'location date')
+      .populate('siteId', 'name region')
       .sort({ datePlanted: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
+    // Sanitize for public / unauthenticated users
+    const sanitized = restorations.map(r => {
+      const doc = r.toObject();
+      if (!req.user || req.user.role === 'public') {
+        if (doc.loggedBy) {
+          doc.loggedBy = { _id: doc.loggedBy._id, name: doc.loggedBy.name };
+        }
+      }
+      return doc;
+    });
+
     res.json({
-      restorations,
+      restorations: sanitized,
       total,
       page: parseInt(page),
       pages: Math.ceil(total / parseInt(limit))

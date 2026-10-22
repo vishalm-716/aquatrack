@@ -1,157 +1,161 @@
-# AquaTrack — Enterprise Marine Conservation Management Platform
+# AquaTrack — India Coral Reef Conservation Operations Platform
 
 [![MERN Stack](https://img.shields.io/badge/Stack-MongoDB%20%7C%20Express%20%7C%20React%20%7C%20Node-0E7C86.svg)](#)
-[![Design](https://img.shields.io/badge/Design-Field--Data%20Ops%20UI-0B2E3D.svg)](#)
+[![Geospatial](https://img.shields.io/badge/Workspace-Leaflet%20India%20Reef%20Map-0B2E3D.svg)](#)
 [![Role-Based](https://img.shields.io/badge/Security-JWT%20RBAC-E8734A.svg)](#)
 
-AquaTrack is a production-grade full-stack marine conservation management system built on the **MERN** stack (MongoDB, Express.js, React.js, Node.js). Designed specifically for marine biologists, scientific diving teams, and marine protected area (MPA) administrators, it consolidates fragmented field logs, substrate transects, biodiversity sightings, and coral nursery outplant metrics into an integrated enterprise dashboard.
+AquaTrack is an enterprise-grade full-stack marine conservation operations management platform built on the **MERN** stack (MongoDB, Express.js, React.js, Node.js). Tailored specifically for Indian coral reef ecosystems, marine biology teams, scientific diving stations, and Marine Protected Area (MPA) managers, it unifies fragmented field transects, thermal bleaching tracking, benthic biodiversity sightings, and coral nursery outplant survival metrics into a centralized geographic operations workspace.
+
+> **Illustrative Demo Data Notice**:
+> The seeded dataset across Gulf of Mannar, Gulf of Kachchh, Lakshadweep, and Andaman & Nicobar contains synthetic demonstration records for system validation and conservation workflow planning. It does not represent official government or marine agency observations. Bleaching visualization thresholds (<10% teal, 10–30% amber, ≥30% coral-orange) are demo interface categorizations, not official scientific risk classifications.
 
 ---
 
-## Architecture & Technology Stack
+## Core Geographic Scope & Indian Reef Stations
 
-### Backend
-- **Node.js & Express.js**: RESTful service architecture with modular routing and controllers.
-- **MongoDB & Mongoose**: 4 core collections (`User`, `Survey`, `Species`, `Restoration`) with geospatial coordinates, aggregation pipelines, and indexing.
-- **JWT & Bcrypt.js**: Secure token-based authentication with 3-tier Role-Based Access Control (`admin`, `researcher`, `public`).
-- **Multer**: Multi-part photographic evidence uploads for transect surveys and nursery before/after tracking.
-- **Express-Validator**: Strict server-side schema verification for GPS coordinates (-90/+90, -180/+180), depth ranges, and percentages (0-100%).
-
-### Frontend
-- **React (Vite)**: Clean Single Page Application with component modularity.
-- **React Router v6**: Protected route guards and nested operational layout.
-- **Context API**: Global session persistence and authorization states.
-- **Axios Interceptors**: Transparent JWT bearer injection and automated 401 token refresh/redirect handling.
-- **Recharts**: High-density interactive data visualizations (site comparison bar charts, longitudinal bleaching trends, species taxa metrics).
-- **Domain Design System**: Tailored marine conservation palette (Deep Ocean Navy `#0B2E3D`, Teal `#0E7C86`, Coral Stress `#E8734A`, Sand `#F7F9F8`), dual typography (Source Serif 4 + Inter), dense tabular data views, skeleton loaders, and zero AI-slop aesthetics.
+AquaTrack features persistent, stable site records across all major Indian coral reef regions:
+1. **Gulf of Mannar (Tamil Nadu)**: Mandapam Reef, Shingle Island Reef, Krusadai Island.
+2. **Gulf of Kachchh (Gujarat)**: Pirotan Island Marine National Park, Narara Reef Flat.
+3. **Lakshadweep Archipelago**: Kavaratti Island Atoll, Bangaram Atoll & Lagoon, Kadmat Island Reef.
+4. **Andaman & Nicobar Islands**: North Bay Reef (Port Blair), Havelock Island (Swaraj Dweep — Elephant Beach), Neil Island (Shaheed Dweep — Bharatpur Reef), Great Nicobar Biosphere (Campbell Bay).
 
 ---
 
-## Database Schema (4 Collections)
+## Key Features
 
-### 1. `User`
-| Field | Type | Attributes |
-|---|---|---|
-| `_id` | ObjectId | Primary Key |
-| `name` | String | Required, trimmed |
-| `email` | String | Unique, validated |
-| `password` | String | Hashed with bcrypt (12 rounds) |
-| `role` | String | Enum: `['admin', 'researcher', 'public']` |
-| `createdAt` | Date | Auto-timestamp |
+### 1. Interactive India Reef Map (`/map`)
+- Built with **React Leaflet + Leaflet** and OpenStreetMap tiles with visible attribution.
+- Initial bounds cover mainland India and both offshore island chains (Lakshadweep and Andaman & Nicobar).
+- Markers color-coded by latest recorded bleaching:
+  - **Teal**: Recorded bleaching < 10% (Low stress)
+  - **Amber**: Recorded bleaching 10% to < 30% (Moderate stress)
+  - **Coral-Orange**: Recorded bleaching ≥ 30% (High stress alert)
+- Dynamic marker popups and direct inspection modal showing site coordinates, MPA status, survey history, species count, and restoration plots.
+- Unified filter bar: Region, bleaching tier, restoration presence, and search keyword.
+- Seamless **Tabular Directory fallback** for low-bandwidth or offline environments with unmapped records tracking.
+
+### 2. Operational Analytics & Monitoring Dashboard (`/`)
+- Server-side MongoDB aggregation pipelines with honest metric definitions:
+  - **Mean Recorded Coral Cover (%)**: Real aggregated mean across transect records.
+  - **Mean Recorded Bleaching (%)**: Real thermal bleaching percentage.
+  - **Bleaching Alerts (≥30%)**: Count of records exceeding demo threshold.
+  - **Mapped Sites vs Unmapped Records**: Clear count of geo-located stations and historical unmapped surveys.
+- Interactive **Recharts** visualizations:
+  - **Coral Cover % by Site**: Bar chart with mean coral cover and sample size (`n` surveys).
+  - **Thermal Bleaching Trajectory**: Longitudinal time-series with monthly aggregation and contributing sample sizes.
+  - **Restoration Survivorship**: Comparative plot of verified nursery survival percentages.
+  - **Logged Biodiversity by Category**: Documented sightings across Scleractinia, Ichthyofauna, and Benthic Invertebrates.
+- Unified filter bar (Region, Date range, Restoration presence) that updates cards and charts in unison.
+
+### 3. Integrated Site Detail View & Activity Timeline
+- Comprehensive modal drawer linking surveys, species sightings, and restoration activities in chronological order.
+- Direct drill-down from both the India Map and the Surveys Logbook.
+- Photographic evidence lightbox for transect photos and nursery before/after comparisons.
+
+### 4. End-to-End Vertical Slice
+- Submitting a new survey (e.g. from Mandapam Reef or a new Indian coordinate) automatically associates or creates the `Site`, persists in MongoDB, and immediately reflects on the India Reef Map and Dashboard aggregations upon refetch.
+
+---
+
+## Database Architecture (5 Collections)
+
+### 1. `Site`
+- `name`: Unique station designation.
+- `region`: Enum `['Gulf of Mannar', 'Gulf of Kachchh', 'Lakshadweep', 'Andaman & Nicobar Islands', 'Other']`.
+- `stateOrUT`: State / Union Territory.
+- `coordinates`: `{ lat, lng }` validated WGS 84 GPS decimal coordinates.
+- `depthRange`: `{ min, max }` in meters.
+- `isMarineProtectedArea`: Boolean flag.
+- `isRestrictedCoordinates`: Boolean (enables coordinate privacy redaction for public viewers).
 
 ### 2. `Survey`
-| Field | Type | Attributes |
-|---|---|---|
-| `location` | String | Survey site or MPA name |
-| `gpsLat` / `gpsLng` | Number | Geo-decimal coordinates |
-| `depth` | Number | Transect depth in meters |
-| `coralCoverPercent` | Number | 0 – 100% |
-| `bleachingPercent` | Number | 0 – 100% |
-| `photoUrl` | String | Photographic transect record |
-| `surveyedBy` | ObjectId (User) | Linked field researcher |
-| `status` | String | Enum: `['pending', 'verified', 'rejected']` |
-| `date` | Date | Survey date |
+- `siteId`: Reference to `Site` (stable identifier).
+- `location`: Freeform site description (backwards-compatible).
+- `region`: Geographic region name.
+- `gpsLat` / `gpsLng`: Validated decimal coordinates (-90 to +90, -180 to +180).
+- `depth`: Depth in meters (≥ 0).
+- `coralCoverPercent`: Live substratum coral cover (0 to 100%).
+- `bleachingPercent`: Substrate bleaching percentage (0 to 100%).
+- `photoUrl`: Multipart photographic transect upload.
+- `surveyedBy`: Linked field researcher (User ObjectId).
+- `date`: Survey timestamp.
+- `status`: Enum `['pending', 'verified', 'rejected']`.
 
 ### 3. `Species`
-| Field | Type | Attributes |
-|---|---|---|
-| `name` | String | Scientific or common taxon |
-| `type` | String | Enum: `['coral', 'fish', 'invertebrate']` |
-| `location` | String | Sighting reef or lagoon |
-| `count` | Number | Integer >= 1 |
-| `sightingDate` | Date | Observation timestamp |
-| `linkedSurvey` | ObjectId (Survey) | Optional linked transect |
+- `name`: Taxon scientific or common name.
+- `type`: Enum `['coral', 'fish', 'invertebrate']`.
+- `siteId`: Associated `Site`.
+- `location`: Location name.
+- `count`: Integer observed count (≥ 1).
+- `sightingDate`: Observation timestamp.
+- `linkedSurvey`: Optional reference to transect `Survey`.
 
 ### 4. `Restoration`
-| Field | Type | Attributes |
-|---|---|---|
-| `siteName` | String | Nursery or outplant grid designation |
-| `coralSpecies` | String | Propagated scleractinian taxon |
-| `datePlanted` | Date | Outplant date |
-| `survivalRatePercent`| Number | 0 – 100% |
-| `beforePhotoUrl` | String | T₀ baseline photographic record |
-| `afterPhotoUrl` | String | T₁ progression photographic record |
-| `loggedBy` | ObjectId (User) | Responsible marine officer |
+- `siteName`: Nursery or outplant plot designation.
+- `siteId`: Associated `Site`.
+- `coralSpecies`: Outplanted scleractinian coral taxon.
+- `datePlanted`: Outplant timestamp.
+- `survivalRatePercent`: Verified survival percentage (0 to 100%).
+- `beforePhotoUrl`: Baseline T₀ photo.
+- `afterPhotoUrl`: Progression T₁ photo.
+- `loggedBy`: Linked researcher or marine officer.
+
+### 5. `User`
+- `name`, `email`, `password` (bcrypt salted), `role` (`'admin'`, `'researcher'`, `'public'`).
 
 ---
 
-## Role-Based Access Control (RBAC)
+## Role-Based Access Control (RBAC) & Privacy Policy
 
-| Feature | Agency Admin | Field Researcher | Public Viewer |
+| Capability | Agency Admin | Field Researcher | Public Viewer |
 |---|:---:|:---:|:---:|
-| View Dashboard & Telemetry Charts |  |  |  |
-| Search & Filter Surveys |  |  |  |
-| Inspect Biodiversity Register |  |  |  |
-| Submit New Reef Survey + Photos |  |  | ❌ |
-| Log Specimen Sighting |  |  | ❌ |
-| Register Coral Nursery Plot |  |  | ❌ |
-| Update Restoration Survival Rates |  |  | ❌ |
-| Verify / Reject Pending Surveys |  | ❌ | ❌ |
-| Manage User Roles & Purge Staff |  | ❌ | ❌ |
+| View Dashboard & Analytics |  |  |  |
+| Inspect Interactive India Map |  |  |  |
+| Filter Surveys & Species Register |  |  |  |
+| View Site Timeline & Records |  |  |  |
+| Log New Reef Transect Survey |  |  | ❌ |
+| Register Specimen Sighting |  |  | ❌ |
+| Register Restoration Plot |  |  | ❌ |
+| Update Survival Rates |  |  | ❌ |
+| View Restricted Coordinates (Exact) |  |  | ❌ *(Rounded ~10km)* |
+| View Surveyor Contact Emails |  |  | ❌ *(Redacted)* |
+| Administer User Accounts |  | ❌ | ❌ |
 
 ---
 
 ## Default Seed Credentials
 
-The database comes pre-seeded with 10 international reef survey sites, 16 biodiversity sightings, and 5 coral nursery plots. Quick 1-click credential buttons are also embedded directly on the Login screen for instant testing:
+The database seed is **100% idempotent**—it verifies records by unique keys and never deletes or overwrites existing user data:
 
 | Role | Email | Password |
 |---|---|---|
 | **Agency Admin** | `admin@aquatrack.org` | `admin123` |
-| **Field Researcher** | `james@aquatrack.org` | `researcher123` |
+| **Field Researcher** | `arun@aquatrack.org` | `researcher123` |
 | **Field Researcher** | `priya@aquatrack.org` | `researcher123` |
 | **Public Viewer** | `guest@aquatrack.org` | `guest123` |
 
 ---
 
-## Getting Started
+## Running the Application Locally
 
 ### Prerequisites
 - Node.js (v18+ recommended)
-- MongoDB running locally at `mongodb://127.0.0.1:27017` (or remote MongoDB Atlas connection string)
+- MongoDB running locally at `mongodb://127.0.0.1:27017`
 
-### 1. Backend Setup
+### 1. Backend Service
 ```bash
 cd server
 npm install
+node seed.js    # Run idempotent India conservation seed
+npm start       # Launches Express on port 5000
 ```
 
-Configure `server/.env`:
-```env
-PORT=5000
-MONGO_URI=mongodb://127.0.0.1:27017/aquatrack
-JWT_SECRET=aquatrack_jwt_secret_key_2024
-NODE_ENV=development
-```
-
-### 2. Seed Realistic Marine Data
-```bash
-cd server
-npm run seed
-```
-This populates 10 surveys across Great Barrier Reef, Raja Ampat, Maldives, Red Sea, Belize, etc., along with biological sightings and restoration survival plots.
-
-### 3. Start Backend Server
-```bash
-cd server
-npm start
-# Server listens on http://localhost:5000
-```
-
-### 4. Frontend Setup & Launch
-In a new terminal window:
+### 2. Frontend Application
 ```bash
 cd client
 npm install
-npm run dev
-# Frontend runs on http://localhost:5173
+npm run build   # Validates Vite production bundle
+npm run dev     # Starts Vite dev server on http://localhost:5173
 ```
 
-Navigate to `http://localhost:5173` in your browser.
-
----
-
-## Verification & Academic Review Highlights
-- **Real persistence loop**: Submitting a survey from the "Log New Survey" form immediately writes to MongoDB and reflects instantaneously in the aggregated Reef Health Index and Bar Charts.
-- **Enterprise data layout**: Persistent left navigation, custom Source Serif 4 + Inter typography scale, asymmetric dashboard hierarchy, and non-generic color palette.
-- **Resilience**: Designed empty states, shimmer skeleton loaders, error boundaries, and input constraints on all numerical bounds.
+Navigate to `http://localhost:5173` to access the platform.

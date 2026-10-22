@@ -5,14 +5,20 @@ const Species = require('../models/Species');
 exports.getSpecies = async (req, res) => {
   try {
     const { type, location, search, page = 1, limit = 20 } = req.query;
-    const filter = {};
+    const filter = {
+      isForeignLegacy: { $ne: true }
+    };
 
     if (type) filter.type = type;
     if (location) filter.location = { $regex: location, $options: 'i' };
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+      filter.$and = [
+        {
+          $or: [
+            { name: { $regex: search, $options: 'i' } },
+            { location: { $regex: search, $options: 'i' } }
+          ]
+        }
       ];
     }
 
