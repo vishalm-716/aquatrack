@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getCommandCenterOverview, getDashboardSummary, getSurveys, verifySurvey } from '../api';
+import { getCommandCenterOverview, getDashboardSummary, getSurveys, verifySurvey, BACKEND_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   HiOutlineShieldCheck,
@@ -558,7 +558,7 @@ export default function AdminCommandCenter() {
                     Photo Documentation:
                   </div>
                   <img
-                    src={`http://localhost:5000${inspectingSurvey.photoUrl}`}
+                    src={`${BACKEND_URL}${inspectingSurvey.photoUrl}`}
                     alt="Transect Photo"
                     style={{ width: '100%', maxHeight: '220px', objectFit: 'cover', borderRadius: '6px' }}
                   />

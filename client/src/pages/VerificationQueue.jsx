@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getSurveys, verifySurvey } from '../api';
+import { getSurveys, verifySurvey, BACKEND_URL } from '../api';
 import {
   HiOutlineClipboardDocumentCheck,
   HiOutlineCheckCircle,
@@ -131,7 +131,7 @@ export default function VerificationQueue() {
                 {survey.photoUrl && (
                   <div style={{ marginTop: '10px' }}>
                     <a
-                      href={`http://localhost:5000${survey.photoUrl}`}
+                      href={`${BACKEND_URL}${survey.photoUrl}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn btn-secondary btn-sm"

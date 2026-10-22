@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: aquatrack-api
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_URI
+        value: mongodb://ckvs16_db_user:bYjvaibexy4jeK7m@ac-9qowqjj-shard-00-00.30bt1ul.mongodb.net:27017,ac-9qowqjj-shard-00-01.30bt1ul.mongodb.net:27017,ac-9qowqjj-shard-00-02.30bt1ul.mongodb.net:27017/aquatrack?ssl=true&replicaSet=atlas-cb1keo-shard-0&authSource=admin&appName=Cluster0
+      - key: JWT_SECRET
+        value: aquatrack_jwt_secret_key_2024
+      - key: CLIENT_URL
+        value: https://client-mu-topaz-26.vercel.app
