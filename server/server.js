@@ -46,7 +46,11 @@ app.use('/api/restoration', require('./routes/restoration'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/admin', require('./routes/admin'));
 
-// Health check
+// Root endpoint & Health check
+app.get('/', (req, res) => {
+  res.json({ message: 'AquaTrack Marine Conservation API is running', health: '/api/health', status: 'ok' });
+});
+
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
