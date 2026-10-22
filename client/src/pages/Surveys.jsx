@@ -437,15 +437,26 @@ export default function Surveys() {
                     {isAdmin && (
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {survey.status === 'pending' && (
+                          {survey.status !== 'verified' && (
                             <button
                               type="button"
                               className="btn btn-sm"
-                              style={{ backgroundColor: 'var(--teal-500)', color: '#fff', padding: '2px 6px', fontSize: '11px' }}
+                              style={{ backgroundColor: 'var(--teal-500)', color: '#fff', padding: '2px 8px', fontSize: '11px' }}
                               onClick={() => handleVerifySurvey(survey._id, 'verified')}
-                              title="Verify survey"
+                              title="Approve survey"
                             >
                               Approve
+                            </button>
+                          )}
+                          {survey.status !== 'rejected' && (
+                            <button
+                              type="button"
+                              className="btn btn-sm"
+                              style={{ backgroundColor: 'var(--coral-500)', color: '#fff', padding: '2px 8px', fontSize: '11px' }}
+                              onClick={() => handleVerifySurvey(survey._id, 'rejected')}
+                              title="Reject survey"
+                            >
+                              Reject
                             </button>
                           )}
                           <button

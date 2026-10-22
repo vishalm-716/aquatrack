@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
-import { getSpecies, createSpecies } from '../api';
+import { getSpecies, createSpecies, verifySpecies, deleteSpecies } from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   HiOutlinePlus,
   HiOutlineMagnifyingGlass,
   HiOutlineEye,
   HiOutlineXMark,
+  HiOutlineCheckCircle,
+  HiOutlineXCircle,
+  HiOutlineTrash,
   HiOutlineTag,
   HiOutlineMapPin,
   HiOutlineCalendar
@@ -15,7 +18,7 @@ import EmptyState from '../components/EmptyState';
 import Toast from '../components/Toast';
 
 export default function Species() {
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin } = useAuth();
   const [speciesList, setSpeciesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -78,6 +81,32 @@ export default function Species() {
       setToast({ message: msg, type: 'error' });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerifySpecies = async (id, status) => {
+    try {
+      await verifySpecies(id, status);
+      setSpeciesList(prev => prev.map(s => s._id === id ? { ...s, status } : s));
+      setToast({
+        message: `Species observation ${status === 'verified' ? 'approved & cataloged' : 'rejected'}. Notification dispatched.`,
+        type: status === 'verified' ? 'success' : 'warning'
+      });
+    } catch (err) {
+      setToast({ message: 'Failed to update verification status', type: 'error' });
+    }
+  };
+
+  const handleDeleteSpecies = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${name}" from biodiversity records?`)) {
+      return;
+    }
+    try {
+      await deleteSpecies(id);
+      setSpeciesList(prev => prev.filter(s => s._id !== id));
+      setToast({ message: `Specimen sighting "${name}" permanently deleted.`, type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to delete record', type: 'error' });
     }
   };
 
@@ -149,38 +178,92 @@ export default function Species() {
                 <th>Location</th>
                 <th>Specimen Count</th>
                 <th>Observation Date</th>
-                <th>Detail</th>
+                <th>Status</th>
+                <th>Recorded By</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {speciesList.map((item) => (
-                <tr key={item._id}>
-                  <td>
-                    <div style={{ fontWeight: 600, color: 'var(--navy-800)' }}>{item.name}</div>
-                  </td>
-                  <td>
-                    <span className={`badge ${item.type === 'coral' ? 'badge-teal' : item.type === 'fish' ? 'badge-navy' : 'badge-coral'}`}>
-                      {item.type}
-                    </span>
-                  </td>
-                  <td style={{ color: 'var(--slate-700)' }}>{item.location}</td>
-                  <td>
-                    <strong style={{ fontSize: '14px' }}>{item.count}</strong> observed
-                  </td>
-                  <td style={{ fontSize: '13px', color: 'var(--slate-500)' }}>
-                    {new Date(item.sightingDate).toLocaleDateString()}
-                  </td>
-                  <td>
-                    <button
-                      className="btn-icon"
-                      onClick={() => setSelectedSpecies(item)}
-                      title="Inspect taxonomic record"
-                    >
-                      <HiOutlineEye size={16} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {speciesList.map((item) => {
+                const status = item.status || 'verified';
+                return (
+                  <tr key={item._id}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--navy-800)' }}>{item.name}</div>
+                    </td>
+                    <td>
+                      <span className={`badge ${item.type === 'coral' ? 'badge-teal' : item.type === 'fish' ? 'badge-navy' : 'badge-coral'}`}>
+                        {item.type}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--slate-700)' }}>{item.location}</td>
+                    <td>
+                      <strong style={{ fontSize: '13px' }}>{item.count}</strong> observed
+                    </td>
+                    <td style={{ fontSize: '13px', color: 'var(--slate-500)' }}>
+                      {new Date(item.sightingDate).toLocaleDateString()}
+                    </td>
+                    <td>
+                      {status === 'verified' ? (
+                        <span className="badge badge-green">Verified</span>
+                      ) : status === 'rejected' ? (
+                        <span className="badge badge-coral">Rejected</span>
+                      ) : (
+                        <span className="badge badge-warning">Pending Review</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: '12.5px', color: 'var(--slate-600)' }}>
+                      {item.recordedBy?.name || 'Marine Station'}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <button
+                          className="btn-icon"
+                          onClick={() => setSelectedSpecies(item)}
+                          title="Inspect taxonomic record"
+                        >
+                          <HiOutlineEye size={16} />
+                        </button>
+
+                        {isAdmin && (
+                          <>
+                            {status !== 'verified' && (
+                              <button
+                                className="btn-icon"
+                                style={{ color: '#10b981' }}
+                                onClick={() => handleVerifySpecies(item._id, 'verified')}
+                                title="Approve Specimen Record"
+                              >
+                                <HiOutlineCheckCircle size={17} />
+                              </button>
+                            )}
+
+                            {status !== 'rejected' && (
+                              <button
+                                className="btn-icon"
+                                style={{ color: '#f59e0b' }}
+                                onClick={() => handleVerifySpecies(item._id, 'rejected')}
+                                title="Reject Specimen Record"
+                              >
+                                <HiOutlineXCircle size={17} />
+                              </button>
+                            )}
+
+                            <button
+                              className="btn-icon"
+                              style={{ color: '#ef4444' }}
+                              onClick={() => handleDeleteSpecies(item._id, item.name)}
+                              title="Delete Record"
+                            >
+                              <HiOutlineTrash size={16} />
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

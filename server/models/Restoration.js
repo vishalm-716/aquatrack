@@ -44,6 +44,11 @@ const restorationSchema = new mongoose.Schema({
     ref: 'Site',
     default: null
   },
+  status: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
   isDemo: {
     type: Boolean,
     default: false

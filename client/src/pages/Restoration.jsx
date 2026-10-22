@@ -1,5 +1,12 @@
 import { useState, useEffect } from 'react';
-import { getRestorations, createRestoration, updateRestoration, BACKEND_URL } from '../api';
+import {
+  getRestorations,
+  createRestoration,
+  updateRestoration,
+  verifyRestoration,
+  deleteRestoration,
+  BACKEND_URL
+} from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   HiOutlinePlus as HiPlus,
@@ -7,7 +14,10 @@ import {
   HiOutlinePencilSquare as HiEdit,
   HiOutlineXMark as HiClose,
   HiOutlineArrowsPointingOut as HiExpand,
-  HiOutlineShieldCheck as HiShield
+  HiOutlineShieldCheck as HiShield,
+  HiOutlineCheckCircle,
+  HiOutlineXCircle,
+  HiOutlineTrash
 } from 'react-icons/hi2';
 import { SkeletonTable } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
@@ -79,7 +89,7 @@ const getPhotoDetails = (item) => {
 };
 
 export default function Restoration() {
-  const { canWrite } = useAuth();
+  const { canWrite, isAdmin } = useAuth();
   const [restorations, setRestorations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -177,6 +187,32 @@ export default function Restoration() {
     }
   };
 
+  const handleVerifyRestoration = async (id, status) => {
+    try {
+      await verifyRestoration(id, status);
+      setRestorations(prev => prev.map(r => r._id === id ? { ...r, status } : r));
+      setToast({
+        message: `Restoration plot ${status === 'verified' ? 'approved & validated' : 'rejected'}. Notification dispatched.`,
+        type: status === 'verified' ? 'success' : 'warning'
+      });
+    } catch (err) {
+      setToast({ message: 'Failed to update verification status', type: 'error' });
+    }
+  };
+
+  const handleDeleteRestoration = async (id, name) => {
+    if (!window.confirm(`Are you sure you want to permanently delete restoration record "${name}"?`)) {
+      return;
+    }
+    try {
+      await deleteRestoration(id);
+      setRestorations(prev => prev.filter(r => r._id !== id));
+      setToast({ message: `Restoration plot "${name}" permanently deleted.`, type: 'success' });
+    } catch (err) {
+      setToast({ message: 'Failed to delete restoration record', type: 'error' });
+    }
+  };
+
   return (
     <div>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -221,14 +257,16 @@ export default function Restoration() {
                 <th>Planting Date</th>
                 <th>Survival Rate %</th>
                 <th>Photographic Record</th>
+                <th>Status</th>
                 <th>Logged By</th>
-                {canWrite && <th>Update</th>}
+                {(canWrite || isAdmin) && <th>Actions</th>}
               </tr>
             </thead>
             <tbody>
               {restorations.map((item) => {
                 const rate = item.survivalRatePercent;
                 const rateClass = rate >= 75 ? 'good' : rate >= 50 ? 'moderate' : 'poor';
+                const status = item.status || 'verified';
                 return (
                   <tr key={item._id}>
                     <td>
@@ -260,21 +298,69 @@ export default function Restoration() {
                         <HiPhoto size={14} /> Compare Photos
                       </button>
                     </td>
+                    <td>
+                      {status === 'verified' ? (
+                        <span className="badge badge-green">Verified</span>
+                      ) : status === 'rejected' ? (
+                        <span className="badge badge-coral">Rejected</span>
+                      ) : (
+                        <span className="badge badge-warning">Pending Review</span>
+                      )}
+                    </td>
                     <td style={{ fontSize: '12px', color: 'var(--slate-600)' }}>
                       {item.loggedBy?.name || 'Marine Station'}
                     </td>
-                    {canWrite && (
+                    {(canWrite || isAdmin) && (
                       <td>
-                        <button
-                          className="btn-icon"
-                          onClick={() => {
-                            setEditingItem(item);
-                            setUpdateRate(item.survivalRatePercent);
-                          }}
-                          title="Update survival telemetry"
-                        >
-                          <HiEdit size={16} />
-                        </button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          {canWrite && (
+                            <button
+                              className="btn-icon"
+                              onClick={() => {
+                                setEditingItem(item);
+                                setUpdateRate(item.survivalRatePercent);
+                              }}
+                              title="Update survival telemetry"
+                            >
+                              <HiEdit size={16} />
+                            </button>
+                          )}
+
+                          {isAdmin && (
+                            <>
+                              {status !== 'verified' && (
+                                <button
+                                  className="btn-icon"
+                                  style={{ color: '#10b981' }}
+                                  onClick={() => handleVerifyRestoration(item._id, 'verified')}
+                                  title="Approve Restoration Record"
+                                >
+                                  <HiOutlineCheckCircle size={17} />
+                                </button>
+                              )}
+
+                              {status !== 'rejected' && (
+                                <button
+                                  className="btn-icon"
+                                  style={{ color: '#f59e0b' }}
+                                  onClick={() => handleVerifyRestoration(item._id, 'rejected')}
+                                  title="Reject Restoration Record"
+                                >
+                                  <HiOutlineXCircle size={17} />
+                                </button>
+                              )}
+
+                              <button
+                                className="btn-icon"
+                                style={{ color: '#ef4444' }}
+                                onClick={() => handleDeleteRestoration(item._id, item.siteName)}
+                                title="Delete Restoration Plot"
+                              >
+                                <HiOutlineTrash size={16} />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     )}
                   </tr>

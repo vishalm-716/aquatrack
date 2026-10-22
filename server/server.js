@@ -45,6 +45,7 @@ app.use('/api/species', require('./routes/species'));
 app.use('/api/restoration', require('./routes/restoration'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Root endpoint & Health check
 app.get('/', (req, res) => {

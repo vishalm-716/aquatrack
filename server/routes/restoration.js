@@ -1,7 +1,11 @@
 const express = require('express');
 const { body } = require('express-validator');
 const {
-  getRestorations, createRestoration, updateRestoration
+  getRestorations,
+  createRestoration,
+  updateRestoration,
+  verifyRestoration,
+  deleteRestoration
 } = require('../controllers/restorationController');
 const { protect, optionalAuth, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -31,5 +35,8 @@ router.put('/:id', protect, authorize('admin', 'researcher'),
   ]),
   updateRestoration
 );
+
+router.put('/:id/verify', protect, authorize('admin'), verifyRestoration);
+router.delete('/:id', protect, authorize('admin'), deleteRestoration);
 
 module.exports = router;

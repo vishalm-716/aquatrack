@@ -56,6 +56,8 @@ export const verifySurvey = (id, status) => API.put(`/surveys/${id}/verify`, { s
 // Species
 export const getSpecies = (params) => API.get('/species', { params });
 export const createSpecies = (data) => API.post('/species', data);
+export const verifySpecies = (id, status) => API.put(`/species/${id}/verify`, { status });
+export const deleteSpecies = (id) => API.delete(`/species/${id}`);
 
 // Restoration
 export const getRestorations = (params) => API.get('/restoration', { params });
@@ -69,6 +71,14 @@ export const updateRestoration = (id, data) => {
     headers: { 'Content-Type': 'multipart/form-data' }
   });
 };
+export const verifyRestoration = (id, status) => API.put(`/restoration/${id}/verify`, { status });
+export const deleteRestoration = (id) => API.delete(`/restoration/${id}`);
+
+// Notifications
+export const getNotifications = () => API.get('/notifications');
+export const markNotificationRead = (id) => API.put(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () => API.put('/notifications/read-all');
+export const deleteNotification = (id) => API.delete(`/notifications/${id}`);
 
 // Sites
 export const getSites = (params) => API.get('/sites', { params });

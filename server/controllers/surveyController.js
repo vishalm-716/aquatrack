@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const Survey = require('../models/Survey');
 const Site = require('../models/Site');
+const { sendNotification } = require('../utils/notify');
 
 // GET /api/surveys
 exports.getSurveys = async (req, res) => {
@@ -322,6 +323,18 @@ exports.verifySurvey = async (req, res) => {
 
     if (!survey) {
       return res.status(404).json({ message: 'Survey not found' });
+    }
+
+    if (survey.surveyedBy && ['verified', 'rejected'].includes(status)) {
+      await sendNotification({
+        recipient: survey.surveyedBy._id || survey.surveyedBy,
+        sender: req.user._id,
+        entityType: 'survey',
+        entityId: survey._id,
+        status,
+        title: `Reef Survey ${status === 'verified' ? 'Approved' : 'Rejected'}`,
+        message: `Your dive transect survey at "${survey.location}" (${survey.coralCoverPercent}% cover) has been ${status === 'verified' ? 'approved and verified' : 'rejected'} by Dr. Marina Reyes.`
+      });
     }
 
     res.json(survey);

@@ -36,6 +36,16 @@ const speciesSchema = new mongoose.Schema({
     ref: 'Site',
     default: null
   },
+  recordedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
   isDemo: {
     type: Boolean,
     default: false

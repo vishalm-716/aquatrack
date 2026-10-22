@@ -1,6 +1,11 @@
 const express = require('express');
 const { body } = require('express-validator');
-const { getSpecies, createSpecies } = require('../controllers/speciesController');
+const {
+  getSpecies,
+  createSpecies,
+  verifySpecies,
+  deleteSpecies
+} = require('../controllers/speciesController');
 const { protect, optionalAuth, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -14,5 +19,8 @@ router.post('/', protect, authorize('admin', 'researcher'), [
   body('count').isInt({ min: 1 }).withMessage('Count must be at least 1'),
   body('sightingDate').notEmpty().withMessage('Sighting date is required')
 ], createSpecies);
+
+router.put('/:id/verify', protect, authorize('admin'), verifySpecies);
+router.delete('/:id', protect, authorize('admin'), deleteSpecies);
 
 module.exports = router;
