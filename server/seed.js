@@ -519,6 +519,8 @@ const seedData = async () => {
         datePlanted: new Date('2024-08-10'),
         survivalRatePercent: 81,
         siteKey: 'Gulf of Mannar — Mandapam Reef',
+        beforePhotoUrl: '/images/restoration/mandapam_baseline.jpg',
+        afterPhotoUrl: '/images/restoration/mandapam_growth.jpg',
         loggedBy: researcher1._id
       },
       {
@@ -527,6 +529,8 @@ const seedData = async () => {
         datePlanted: new Date('2024-10-15'),
         survivalRatePercent: 74,
         siteKey: 'Gulf of Mannar — Shingle Island Reef',
+        beforePhotoUrl: '/images/restoration/shingle_baseline.jpg',
+        afterPhotoUrl: '/images/restoration/shingle_growth.jpg',
         loggedBy: researcher1._id
       },
       {
@@ -535,6 +539,8 @@ const seedData = async () => {
         datePlanted: new Date('2024-11-20'),
         survivalRatePercent: 88,
         siteKey: 'Lakshadweep — Kavaratti Island Atoll',
+        beforePhotoUrl: '/images/restoration/kavaratti_baseline.jpg',
+        afterPhotoUrl: '/images/restoration/kavaratti_growth.jpg',
         loggedBy: researcher2._id
       },
       {
@@ -543,6 +549,8 @@ const seedData = async () => {
         datePlanted: new Date('2025-01-12'),
         survivalRatePercent: 67,
         siteKey: 'Andaman — Havelock Island (Swaraj Dweep) — Elephant Beach',
+        beforePhotoUrl: '/images/restoration/havelock_baseline.jpg',
+        afterPhotoUrl: '/images/restoration/havelock_growth.jpg',
         loggedBy: researcher1._id
       },
       {
@@ -551,6 +559,8 @@ const seedData = async () => {
         datePlanted: new Date('2025-02-14'),
         survivalRatePercent: 78,
         siteKey: 'Gulf of Kachchh — Pirotan Island Marine National Park',
+        beforePhotoUrl: '/images/restoration/pirotan_baseline.jpg',
+        afterPhotoUrl: '/images/restoration/pirotan_growth.jpg',
         loggedBy: researcher2._id
       }
     ];
@@ -565,14 +575,19 @@ const seedData = async () => {
           coralSpecies: item.coralSpecies,
           datePlanted: item.datePlanted,
           survivalRatePercent: item.survivalRatePercent,
+          beforePhotoUrl: item.beforePhotoUrl,
+          afterPhotoUrl: item.afterPhotoUrl,
           siteId: site ? site._id : null,
           loggedBy: item.loggedBy,
           isDemo: true
         });
         createdRestorationsCount++;
-      } else if (site && !existing.siteId) {
-        existing.siteId = site._id;
-        await existing.save();
+      } else {
+        let changed = false;
+        if (site && !existing.siteId) { existing.siteId = site._id; changed = true; }
+        if (!existing.beforePhotoUrl && item.beforePhotoUrl) { existing.beforePhotoUrl = item.beforePhotoUrl; changed = true; }
+        if (!existing.afterPhotoUrl && item.afterPhotoUrl) { existing.afterPhotoUrl = item.afterPhotoUrl; changed = true; }
+        if (changed) await existing.save();
       }
     }
     console.log(`Seeded / verified restoration plots (${createdRestorationsCount} newly created)`);
