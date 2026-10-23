@@ -47,6 +47,7 @@ export default function App() {
               </ProtectedRoute>
             }
           />
+          <Route path="/verification-queue" element={<Navigate to="/admin/verification" replace />} />
           <Route
             path="/admin/reports"
             element={

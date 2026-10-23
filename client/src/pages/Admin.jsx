@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getUsers, getUserProfile, updateUserRole, deleteUser, getSurveys, updateSurvey } from '../api';
+import { Link } from 'react-router-dom';
+import { getUsers, getUserProfile, updateUserRole, deleteUser, getSurveys, updateSurvey, getVerificationQueue, verifySurvey, verifySpecies, verifyRestoration } from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   HiOutlineUserGroup,
@@ -231,6 +232,7 @@ export default function Admin() {
   const { user } = useAuth();
   const [users, setUsers] = useState([]);
   const [pendingSurveys, setPendingSurveys] = useState([]);
+  const [pendingQueue, setPendingQueue] = useState({ surveys: [], species: [], restorations: [], totalPending: 0 });
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [loadingSurveys, setLoadingSurveys] = useState(true);
   const [activeTab, setActiveTab] = useState('users');
@@ -251,14 +253,29 @@ export default function Admin() {
     }
   };
 
-  const fetchPendingSurveys = async () => {
+  const fetchPendingQueue = async () => {
     try {
       setLoadingSurveys(true);
-      const res = await getSurveys({ limit: 50 });
-      const all = res.data.surveys || [];
-      setPendingSurveys(all.filter(s => s.status === 'pending'));
+      const res = await getVerificationQueue();
+      const q = res.data || { surveys: [], species: [], restorations: [], totalPending: 0 };
+      setPendingQueue(q);
+      setPendingSurveys(q.surveys || []);
     } catch (err) {
-      console.error('Error fetching pending surveys:', err);
+      console.error('Error fetching verification queue:', err);
+      try {
+        const [surveysRes, speciesRes, restorationsRes] = await Promise.all([
+          getSurveys({ status: 'pending' }),
+          getSpecies({ status: 'pending' }),
+          getRestorations({ status: 'pending' })
+        ]);
+        const s = surveysRes.data.surveys || [];
+        const sp = speciesRes.data.species || [];
+        const r = restorationsRes.data.restorations || [];
+        setPendingSurveys(s);
+        setPendingQueue({ surveys: s, species: sp, restorations: r, totalPending: s.length + sp.length + r.length });
+      } catch (e) {
+        console.error(e);
+      }
     } finally {
       setLoadingSurveys(false);
     }
@@ -266,14 +283,14 @@ export default function Admin() {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchUsers(), fetchPendingSurveys()]);
+    await Promise.all([fetchUsers(), fetchPendingQueue()]);
     setRefreshing(false);
     setToast({ message: 'Data refreshed', type: 'success' });
   };
 
   useEffect(() => {
     fetchUsers();
-    fetchPendingSurveys();
+    fetchPendingQueue();
   }, []);
 
   const handleRoleChange = async (userId, newRole) => {
@@ -299,11 +316,31 @@ export default function Admin() {
 
   const handleVerifySurvey = async (surveyId, status) => {
     try {
-      await updateSurvey(surveyId, { status });
-      setToast({ message: `Survey marked as ${status}.`, type: 'success' });
-      fetchPendingSurveys();
+      await verifySurvey(surveyId, status);
+      setToast({ message: `Survey marked as ${status}. Notification dispatched.`, type: 'success' });
+      fetchPendingQueue();
     } catch (err) {
       setToast({ message: 'Failed to update survey status', type: 'error' });
+    }
+  };
+
+  const handleVerifySpecies = async (id, status, name) => {
+    try {
+      await verifySpecies(id, status);
+      setToast({ message: `Species observation "${name}" ${status === 'verified' ? 'approved & cataloged' : 'rejected'}. Notification dispatched.`, type: 'success' });
+      fetchPendingQueue();
+    } catch (err) {
+      setToast({ message: 'Failed to update species status', type: 'error' });
+    }
+  };
+
+  const handleVerifyRestoration = async (id, status, name) => {
+    try {
+      await verifyRestoration(id, status);
+      setToast({ message: `Restoration plot "${name}" ${status === 'verified' ? 'approved & verified' : 'rejected'}. Notification dispatched.`, type: 'success' });
+      fetchPendingQueue();
+    } catch (err) {
+      setToast({ message: 'Failed to update restoration status', type: 'error' });
     }
   };
 
@@ -338,7 +375,7 @@ export default function Admin() {
           { icon: <HiOutlineUserGroup size={14} />, val: users.length, label: 'Total Users', color: 'var(--navy-700)' },
           { icon: <HiOutlineShieldCheck size={14} />, val: users.filter(u => u.role === 'researcher').length, label: 'Field Researchers', color: 'var(--teal-600)' },
           { icon: <HiOutlineUser size={14} />, val: users.filter(u => u.role === 'public').length, label: 'Public Viewers', color: 'var(--warning)' },
-          { icon: <HiOutlineClipboardDocumentCheck size={14} />, val: pendingSurveys.length, label: 'Pending Surveys', color: pendingSurveys.length > 0 ? 'var(--danger)' : 'var(--success)' },
+          { icon: <HiOutlineClipboardDocumentCheck size={14} />, val: pendingQueue.totalPending || 0, label: 'Pending Verification Queue', color: (pendingQueue.totalPending || 0) > 0 ? 'var(--danger)' : 'var(--success)' },
         ].map(item => (
           <div key={item.label} style={{
             display: 'inline-flex', alignItems: 'center', gap: '6px',
@@ -355,7 +392,7 @@ export default function Admin() {
       <div style={{ display: 'flex', gap: '4px', borderBottom: '1px solid var(--sand-300)', marginBottom: '20px' }}>
         {[
           { id: 'users', icon: <HiOutlineUserGroup size={15} />, label: `Personnel Directory (${users.length})` },
-          { id: 'queue', icon: <HiOutlineClipboardDocumentCheck size={15} />, label: `Verification Queue (${pendingSurveys.length})` },
+          { id: 'queue', icon: <HiOutlineClipboardDocumentCheck size={15} />, label: `Verification Queue (${pendingQueue.totalPending || 0})` },
         ].map(tab => (
           <button
             key={tab.id}
@@ -465,73 +502,266 @@ export default function Admin() {
       {activeTab === 'queue' && (
         loadingSurveys ? (
           <SkeletonTable rows={4} cols={6} />
-        ) : pendingSurveys.length === 0 ? (
+        ) : (pendingQueue.totalPending || 0) === 0 ? (
           <div className="card">
             <EmptyState
               title="Verification Queue Clear"
-              description="All submitted reef survey transects have been inspected and verified by QA."
+              description="All submitted reef transect surveys, biodiversity records, and coral restoration plots have been inspected and verified."
             />
           </div>
         ) : (
-          <div className="table-container">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Survey Location</th>
-                  <th>Depth</th>
-                  <th>Coral Cover</th>
-                  <th>Bleaching</th>
-                  <th>Field Researcher</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingSurveys.map((survey) => (
-                  <tr key={survey._id}>
-                    <td>
-                      <strong>{survey.location}</strong>
-                      <div style={{ fontSize: '11px', color: 'var(--slate-500)' }}>
-                        {survey.gpsLat?.toFixed(3)}°, {survey.gpsLng?.toFixed(3)}°
-                      </div>
-                    </td>
-                    <td>{survey.depth} m</td>
-                    <td><strong style={{ color: 'var(--teal-600)' }}>{survey.coralCoverPercent}%</strong></td>
-                    <td>
-                      <span className={`badge ${survey.bleachingPercent >= 30 ? 'badge-danger' : survey.bleachingPercent >= 10 ? 'badge-warning' : 'badge-green'}`}>
-                        {survey.bleachingPercent}%
-                      </span>
-                    </td>
-                    <td>
-                      <button
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--teal-600)', fontWeight: 600, fontSize: '13px', padding: 0, textDecoration: 'underline dotted' }}
-                        onClick={() => survey.surveyedBy?._id && setViewingUserId(survey.surveyedBy._id)}
-                        title="View researcher profile"
-                      >
-                        {survey.surveyedBy?.name || 'Staff'}
-                      </button>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        <button
-                          className="btn btn-primary btn-sm"
-                          onClick={() => handleVerifySurvey(survey._id, 'verified')}
-                          style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
-                        >
-                          <HiOutlineCheck size={13} /> Verify
-                        </button>
-                        <button
-                          className="btn btn-secondary btn-sm"
-                          onClick={() => handleVerifySurvey(survey._id, 'rejected')}
-                          style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--danger)' }}
-                        >
-                          <HiOutlineXMark size={13} /> Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Summary Banner */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, rgba(13, 148, 136, 0.08) 0%, rgba(14, 116, 144, 0.08) 100%)',
+              border: '1px solid rgba(13, 148, 136, 0.3)',
+              borderRadius: '10px',
+              padding: '16px 20px',
+              flexWrap: 'wrap',
+              gap: '12px'
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <HiOutlineClipboardDocumentCheck size={20} color="var(--teal-600)" />
+                  <strong style={{ fontSize: '15px', color: 'var(--navy-900)' }}>
+                    {pendingQueue.totalPending} Field Submissions Awaiting Scientific Validation
+                  </strong>
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--slate-600)', marginTop: '4px' }}>
+                  {pendingSurveys.length} Transect Surveys • {pendingQueue.species?.length || 0} Biodiversity Records • {pendingQueue.restorations?.length || 0} Restoration Plots
+                </div>
+              </div>
+              <Link
+                to="/admin/verification"
+                className="btn btn-primary btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                <HiOutlineClipboardDocumentCheck size={16} /> Open Scientific Verification Queue
+              </Link>
+            </div>
+
+            {/* Sub-Queue 1: Transect Surveys */}
+            {pendingSurveys.length > 0 && (
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px' }}>
+                    Reef Transect Surveys ({pendingSurveys.length})
+                  </h3>
+                  <span className="badge badge-warning">Needs Verification</span>
+                </div>
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Survey Location</th>
+                        <th>Depth</th>
+                        <th>Coral Cover</th>
+                        <th>Bleaching</th>
+                        <th>Field Researcher</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingSurveys.map((survey) => (
+                        <tr key={survey._id}>
+                          <td>
+                            <strong>{survey.location}</strong>
+                            <div style={{ fontSize: '11px', color: 'var(--slate-500)' }}>
+                              {survey.gpsLat?.toFixed(3)}°, {survey.gpsLng?.toFixed(3)}°
+                            </div>
+                          </td>
+                          <td>{survey.depth} m</td>
+                          <td><strong style={{ color: 'var(--teal-600)' }}>{survey.coralCoverPercent}%</strong></td>
+                          <td>
+                            <span className={`badge ${survey.bleachingPercent >= 30 ? 'badge-danger' : survey.bleachingPercent >= 10 ? 'badge-warning' : 'badge-green'}`}>
+                              {survey.bleachingPercent}%
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--teal-600)', fontWeight: 600, fontSize: '13px', padding: 0, textDecoration: 'underline dotted' }}
+                              onClick={() => survey.surveyedBy?._id && setViewingUserId(survey.surveyedBy._id)}
+                              title="View researcher profile"
+                            >
+                              {survey.surveyedBy?.name || 'Staff'}
+                            </button>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleVerifySurvey(survey._id, 'verified')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                              >
+                                <HiOutlineCheck size={13} /> Verify
+                              </button>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => handleVerifySurvey(survey._id, 'rejected')}
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--danger)' }}
+                              >
+                                <HiOutlineXMark size={13} /> Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-Queue 2: Biodiversity Species */}
+            {(pendingQueue.species?.length || 0) > 0 && (
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px' }}>
+                    Biodiversity Records ({pendingQueue.species.length})
+                  </h3>
+                  <span className="badge badge-warning">Needs Approval</span>
+                </div>
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Species Name</th>
+                        <th>Type</th>
+                        <th>Location</th>
+                        <th>Count</th>
+                        <th>Field Researcher</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingQueue.species.map((sp) => (
+                        <tr key={sp._id}>
+                          <td>
+                            <strong>{sp.name || sp.commonName}</strong>
+                            {sp.scientificName && (
+                              <div style={{ fontSize: '11px', color: 'var(--slate-500)', fontStyle: 'italic' }}>
+                                {sp.scientificName}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span className="badge badge-teal" style={{ textTransform: 'capitalize' }}>
+                              {sp.type || sp.category}
+                            </span>
+                          </td>
+                          <td>{sp.location}</td>
+                          <td><strong>{sp.count || 1}</strong> observed</td>
+                          <td>
+                            <button
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--teal-600)', fontWeight: 600, fontSize: '13px', padding: 0, textDecoration: 'underline dotted' }}
+                              onClick={() => (sp.recordedBy?._id || sp.observedBy?._id) && setViewingUserId(sp.recordedBy?._id || sp.observedBy?._id)}
+                              title="View researcher profile"
+                            >
+                              {sp.recordedBy?.name || sp.observedBy?.name || 'Researcher'}
+                            </button>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleVerifySpecies(sp._id, 'verified', sp.name || sp.commonName)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                              >
+                                <HiOutlineCheck size={13} /> Approve
+                              </button>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => handleVerifySpecies(sp._id, 'rejected', sp.name || sp.commonName)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--danger)' }}
+                              >
+                                <HiOutlineXMark size={13} /> Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Sub-Queue 3: Restoration Plots */}
+            {(pendingQueue.restorations?.length || 0) > 0 && (
+              <div className="card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px' }}>
+                    Coral Restoration Plots ({pendingQueue.restorations.length})
+                  </h3>
+                  <span className="badge badge-warning">Needs Approval</span>
+                </div>
+                <div className="table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Restoration Site</th>
+                        <th>Coral Species</th>
+                        <th>Planting Date</th>
+                        <th>Survival Rate</th>
+                        <th>Logged By</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingQueue.restorations.map((r) => (
+                        <tr key={r._id}>
+                          <td>
+                            <strong>{r.siteName}</strong>
+                            <div style={{ fontSize: '11px', color: 'var(--slate-500)' }}>
+                              {r.technique?.replace('_', ' ') || 'Outplanting Plot'}
+                            </div>
+                          </td>
+                          <td style={{ fontStyle: 'italic' }}>{r.coralSpecies || r.coralSpeciesPlanted}</td>
+                          <td style={{ fontSize: '12px' }}>
+                            {new Date(r.datePlanted || r.createdAt).toLocaleDateString()}
+                          </td>
+                          <td>
+                            <span className={`badge ${r.survivalRatePercent >= 75 ? 'badge-green' : r.survivalRatePercent >= 50 ? 'badge-warning' : 'badge-danger'}`}>
+                              {r.survivalRatePercent}%
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--teal-600)', fontWeight: 600, fontSize: '13px', padding: 0, textDecoration: 'underline dotted' }}
+                              onClick={() => (r.loggedBy?._id || r.monitoredBy?._id) && setViewingUserId(r.loggedBy?._id || r.monitoredBy?._id)}
+                              title="View researcher profile"
+                            >
+                              {r.loggedBy?.name || r.monitoredBy?.name || 'Researcher'}
+                            </button>
+                          </td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button
+                                className="btn btn-primary btn-sm"
+                                onClick={() => handleVerifyRestoration(r._id, 'verified', r.siteName)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                              >
+                                <HiOutlineCheck size={13} /> Approve
+                              </button>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => handleVerifyRestoration(r._id, 'rejected', r.siteName)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--danger)' }}
+                              >
+                                <HiOutlineXMark size={13} /> Reject
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )
       )}

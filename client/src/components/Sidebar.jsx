@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNotifications } from '../context/NotificationContext';
 import {
   HiOutlineShieldCheck,
   HiOutlineClipboardDocumentCheck,
@@ -16,6 +17,7 @@ import {
 
 export default function Sidebar() {
   const { user, logout, isAdmin, isResearcher } = useAuth();
+  const { adminPendingCount } = useNotifications();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -46,9 +48,14 @@ export default function Sidebar() {
                 <HiOutlineShieldCheck />
                 Command Center
               </NavLink>
-              <NavLink to="/admin/verification" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
+              <NavLink to="/admin/verification" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`} style={{ display: 'flex', alignItems: 'center' }}>
                 <HiOutlineClipboardDocumentCheck />
-                Verification Queue
+                <span style={{ flex: 1 }}>Verification Queue</span>
+                {adminPendingCount > 0 && (
+                  <span className="badge badge-warning" style={{ fontSize: '10.5px', padding: '2px 7px', borderRadius: '10px', fontWeight: 700 }}>
+                    {adminPendingCount}
+                  </span>
+                )}
               </NavLink>
               <NavLink to="/map" className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}>
                 <HiOutlineMap />

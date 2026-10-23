@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getCommandCenterOverview, getDashboardSummary, getSurveys, verifySurvey, BACKEND_URL } from '../api';
+import { getCommandCenterOverview, getDashboardSummary, getSurveys, verifySurvey, verifySpecies, verifyRestoration, BACKEND_URL } from '../api';
 import { useAuth } from '../context/AuthContext';
 import {
   HiOutlineShieldCheck,
@@ -56,8 +56,8 @@ export default function AdminCommandCenter() {
     try {
       await verifySurvey(surveyId, status);
       setToast({
-        type: 'success',
-        message: `Survey marked as ${status.toUpperCase()}`
+        type: status === 'verified' ? 'success' : 'warning',
+        message: `Survey marked as ${status.toUpperCase()}. Notification dispatched.`
       });
       if (inspectingSurvey && inspectingSurvey._id === surveyId) {
         setInspectingSurvey(null);
@@ -69,6 +69,34 @@ export default function AdminCommandCenter() {
         type: 'error',
         message: 'Failed to update verification status'
       });
+    }
+  };
+
+  const handleVerifySpecies = async (id, status, name) => {
+    try {
+      await verifySpecies(id, status);
+      setToast({
+        type: status === 'verified' ? 'success' : 'warning',
+        message: `Species "${name || 'record'}" ${status === 'verified' ? 'approved & cataloged' : 'rejected'}. Notification dispatched.`
+      });
+      fetchOverview();
+    } catch (err) {
+      console.error('Failed to update species verification:', err);
+      setToast({ type: 'error', message: 'Failed to update verification status' });
+    }
+  };
+
+  const handleVerifyRestoration = async (id, status, name) => {
+    try {
+      await verifyRestoration(id, status);
+      setToast({
+        type: status === 'verified' ? 'success' : 'warning',
+        message: `Restoration plot "${name || 'plot'}" ${status === 'verified' ? 'approved & verified' : 'rejected'}. Notification dispatched.`
+      });
+      fetchOverview();
+    } catch (err) {
+      console.error('Failed to update restoration verification:', err);
+      setToast({ type: 'error', message: 'Failed to update verification status' });
     }
   };
 
@@ -139,11 +167,18 @@ export default function AdminCommandCenter() {
 
   const {
     pendingSurveys = [],
+    pendingSpecies = [],
+    pendingRestorations = [],
+    totalPending: apiTotalPending,
     dataQualityFlags = {},
     regionalCoverage = [],
     userRoleSummary = {},
     restorationFollowUp = []
   } = data || {};
+
+  const totalPending = typeof apiTotalPending === 'number'
+    ? apiTotalPending
+    : (pendingSurveys.length + pendingSpecies.length + pendingRestorations.length);
 
   const { foreignLegacyAudited = {}, missingPhotosCount = 0, severeBleachingAlerts = [] } = dataQualityFlags;
 
@@ -216,14 +251,18 @@ export default function AdminCommandCenter() {
       {/* KPI Cards Row */}
       <div className="stats-grid" style={{ marginBottom: '24px' }}>
         {/* Card 1: Pending Queue */}
-        <div className="stat-card" style={{ borderLeft: pendingSurveys.length > 0 ? '4px solid var(--warning)' : '4px solid var(--teal-500)' }}>
-          <div className="stat-icon" style={{ backgroundColor: pendingSurveys.length > 0 ? 'rgba(212, 168, 67, 0.15)' : 'var(--teal-50)' }}>
-            <HiOutlineClipboardDocumentCheck size={24} color={pendingSurveys.length > 0 ? 'var(--warning)' : 'var(--teal-600)'} />
+        <div className="stat-card" style={{ borderLeft: totalPending > 0 ? '4px solid var(--warning)' : '4px solid var(--teal-500)' }}>
+          <div className="stat-icon" style={{ backgroundColor: totalPending > 0 ? 'rgba(212, 168, 67, 0.15)' : 'var(--teal-50)' }}>
+            <HiOutlineClipboardDocumentCheck size={24} color={totalPending > 0 ? 'var(--warning)' : 'var(--teal-600)'} />
           </div>
           <div className="stat-content">
-            <div className="stat-value">{pendingSurveys.length}</div>
+            <div className="stat-value">{totalPending}</div>
             <div className="stat-label">Pending Verification Queue</div>
-            <div className="stat-sub">{pendingSurveys.length > 0 ? 'Requires scientific review' : 'All submissions verified'}</div>
+            <div className="stat-sub">
+              {totalPending > 0
+                ? `${pendingSurveys.length} surveys • ${pendingSpecies.length} species • ${pendingRestorations.length} restoration`
+                : 'All submissions verified'}
+            </div>
           </div>
         </div>
 
@@ -268,31 +307,38 @@ export default function AdminCommandCenter() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))', gap: '20px', marginBottom: '24px' }}>
         {/* Panel 1: Pending Verification Queue */}
         <div className="card" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
             <div>
-              <div className="card-title">Pending Survey Verification Queue</div>
-              <div className="card-subtitle">Field submissions awaiting administrative scientific review</div>
+              <div className="card-title">Scientific Verification Queue</div>
+              <div className="card-subtitle">Pending submissions across surveys, biodiversity, and restoration</div>
             </div>
-            {pendingSurveys.length > 0 && (
-              <span className="badge badge-warning">{pendingSurveys.length} pending</span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {totalPending > 0 && (
+                <span className="badge badge-warning">{totalPending} pending review</span>
+              )}
+              <Link to="/admin/verification" className="btn btn-secondary btn-sm" style={{ fontSize: '11px', padding: '4px 10px' }}>
+                Open Full Queue &rarr;
+              </Link>
+            </div>
           </div>
 
           <div style={{ flex: 1 }}>
-            {pendingSurveys.length === 0 ? (
+            {totalPending === 0 ? (
               <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--slate-500)' }}>
                 <HiOutlineCheckCircle size={40} color="var(--teal-500)" style={{ margin: '0 auto 8px' }} />
                 <div style={{ fontWeight: 600, color: 'var(--navy-900)' }}>Verification Queue Clear</div>
-                <div style={{ fontSize: '13px', marginTop: '4px' }}>All field researcher transects are up to date and approved.</div>
+                <div style={{ fontSize: '13px', marginTop: '4px' }}>All field researcher transects, biodiversity sightings, and restoration plots are verified.</div>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Pending Surveys */}
                 {pendingSurveys.map((survey) => (
                   <div
-                    key={survey._id}
+                    key={`s-${survey._id}`}
                     style={{
                       background: 'var(--sand-100)',
                       border: '1px solid var(--sand-300)',
+                      borderLeft: '4px solid var(--teal-500)',
                       borderRadius: '6px',
                       padding: '12px',
                       display: 'flex',
@@ -303,8 +349,11 @@ export default function AdminCommandCenter() {
                     }}
                   >
                     <div>
-                      <div style={{ fontWeight: 600, color: 'var(--navy-900)', fontSize: '13px' }}>
-                        {survey.location}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <span className="badge badge-teal" style={{ fontSize: '10px' }}>Reef Survey</span>
+                        <span style={{ fontWeight: 600, color: 'var(--navy-900)', fontSize: '13px' }}>
+                          {survey.location}
+                        </span>
                       </div>
                       <div style={{ fontSize: '12px', color: 'var(--slate-600)', marginTop: '2px' }}>
                         Region: <strong>{survey.region || 'India'}</strong> &bull; Surveyor: <strong>{survey.surveyedBy?.name || 'Researcher'}</strong>
@@ -345,6 +394,125 @@ export default function AdminCommandCenter() {
                     </div>
                   </div>
                 ))}
+
+                {/* Pending Species */}
+                {pendingSpecies.slice(0, 5).map((sp) => (
+                  <div
+                    key={`sp-${sp._id}`}
+                    style={{
+                      background: 'var(--sand-100)',
+                      border: '1px solid var(--sand-300)',
+                      borderLeft: '4px solid var(--navy-600)',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <span className="badge badge-navy" style={{ fontSize: '10px' }}>Biodiversity Record</span>
+                        <span className={`badge ${sp.type === 'coral' ? 'badge-teal' : sp.type === 'fish' ? 'badge-navy' : 'badge-coral'}`} style={{ fontSize: '10px' }}>
+                          {sp.type}
+                        </span>
+                        <span style={{ fontWeight: 600, color: 'var(--navy-900)', fontSize: '13px' }}>
+                          {sp.name}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--slate-600)', marginTop: '2px' }}>
+                        Location: <strong>{sp.location}</strong> &bull; Recorded By: <strong>{sp.recordedBy?.name || 'Marine Station'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '6px', fontSize: '11px', color: 'var(--slate-500)' }}>
+                        <span>Count: <strong>{sp.count} observed</strong></span>
+                        <span>Date: <strong>{new Date(sp.sightingDate || sp.createdAt).toLocaleDateString()}</strong></span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{ backgroundColor: 'var(--teal-500)', color: '#fff', padding: '4px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => handleVerifySpecies(sp._id, 'verified', sp.name)}
+                      >
+                        <HiOutlineCheckCircle size={14} /> Verify
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{ backgroundColor: 'var(--danger)', color: '#fff', padding: '4px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => handleVerifySpecies(sp._id, 'rejected', sp.name)}
+                      >
+                        <HiOutlineXCircle size={14} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Pending Restoration Plots */}
+                {pendingRestorations.slice(0, 5).map((r) => (
+                  <div
+                    key={`r-${r._id}`}
+                    style={{
+                      background: 'var(--sand-100)',
+                      border: '1px solid var(--sand-300)',
+                      borderLeft: '4px solid #10b981',
+                      borderRadius: '6px',
+                      padding: '12px',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: '12px',
+                      flexWrap: 'wrap'
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
+                        <span className="badge badge-green" style={{ fontSize: '10px' }}>Restoration Plot</span>
+                        <span style={{ fontWeight: 600, color: 'var(--navy-900)', fontSize: '13px' }}>
+                          {r.siteName}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--slate-600)', marginTop: '2px' }}>
+                        Taxon: <span className="badge badge-teal" style={{ fontSize: '10px' }}>{r.coralSpecies}</span> &bull; Logged By: <strong>{r.loggedBy?.name || 'Marine Station'}</strong>
+                      </div>
+                      <div style={{ display: 'flex', gap: '10px', marginTop: '6px', fontSize: '11px', color: 'var(--slate-500)' }}>
+                        <span>Survival: <strong>{r.survivalRatePercent}%</strong></span>
+                        <span>Planted: <strong>{new Date(r.datePlanted || r.createdAt).toLocaleDateString()}</strong></span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{ backgroundColor: 'var(--teal-500)', color: '#fff', padding: '4px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => handleVerifyRestoration(r._id, 'verified', r.siteName)}
+                      >
+                        <HiOutlineCheckCircle size={14} /> Verify
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-sm"
+                        style={{ backgroundColor: 'var(--danger)', color: '#fff', padding: '4px 10px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        onClick={() => handleVerifyRestoration(r._id, 'rejected', r.siteName)}
+                      >
+                        <HiOutlineXCircle size={14} /> Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {totalPending > 10 && (
+                  <div style={{ textAlign: 'center', marginTop: '8px' }}>
+                    <Link to="/admin/verification" className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
+                      View all {totalPending} pending items in Verification Queue &rarr;
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
           </div>

@@ -9,6 +9,8 @@ exports.getCommandCenterOverview = async (req, res) => {
   try {
     const [
       pendingSurveys,
+      pendingSpecies,
+      pendingRestorations,
       flaggedSurveysNoPhoto,
       flaggedSevereBleaching,
       foreignSurveysCount,
@@ -19,10 +21,30 @@ exports.getCommandCenterOverview = async (req, res) => {
       restorationsNeedingFollowup,
       regionalAgg
     ] = await Promise.all([
-      // 1. Pending verification queue
+      // 1. Pending verification queue - Surveys
       Survey.find({ status: 'pending', isForeignLegacy: { $ne: true } })
         .populate('surveyedBy', 'name email role')
         .populate('siteId', 'name region')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+
+      // 1b. Pending verification queue - Biodiversity Species
+      Species.find({
+        $or: [{ status: 'pending' }, { status: { $exists: false } }, { status: null }],
+        isForeignLegacy: { $ne: true }
+      })
+        .populate('recordedBy', 'name email role')
+        .sort({ createdAt: -1 })
+        .limit(20)
+        .lean(),
+
+      // 1c. Pending verification queue - Restoration Plots
+      Restoration.find({
+        $or: [{ status: 'pending' }, { status: { $exists: false } }, { status: null }],
+        isForeignLegacy: { $ne: true }
+      })
+        .populate('loggedBy', 'name email role')
         .sort({ createdAt: -1 })
         .limit(20)
         .lean(),
@@ -107,6 +129,9 @@ exports.getCommandCenterOverview = async (req, res) => {
 
     res.json({
       pendingSurveys,
+      pendingSpecies,
+      pendingRestorations,
+      totalPending: pendingSurveys.length + pendingSpecies.length + pendingRestorations.length,
       dataQualityFlags: {
         missingPhotosCount: flaggedSurveysNoPhoto.length,
         missingPhotosList: flaggedSurveysNoPhoto,

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification } from '../api';
+import { getNotifications, markNotificationRead, markAllNotificationsRead, deleteNotification, getVerificationQueue } from '../api';
 import { useAuth } from './AuthContext';
 
 const NotificationContext = createContext(null);
@@ -8,18 +8,30 @@ export function NotificationProvider({ children }) {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [adminPendingCount, setAdminPendingCount] = useState(0);
   const [loading, setLoading] = useState(false);
 
   const fetchUserNotifications = useCallback(async () => {
     if (!user) {
       setNotifications([]);
       setUnreadCount(0);
+      setAdminPendingCount(0);
       return;
     }
     try {
       const res = await getNotifications();
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
+
+      // If admin, also fetch live pending verification queue count
+      if (user.role === 'admin') {
+        try {
+          const qRes = await getVerificationQueue();
+          setAdminPendingCount(qRes.data.totalPending || 0);
+        } catch (e) {
+          // ignore
+        }
+      }
     } catch (err) {
       // Silently handle polling failure
     }
@@ -68,6 +80,7 @@ export function NotificationProvider({ children }) {
       value={{
         notifications,
         unreadCount,
+        adminPendingCount,
         fetchNotifications: fetchUserNotifications,
         markAsRead,
         markAllAsRead,
