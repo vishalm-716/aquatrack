@@ -94,6 +94,7 @@ export const getUserProfile = (id) => API.get(`/admin/users/${id}`);
 export const updateUserRole = (id, role) => API.put(`/admin/users/${id}/role`, { role });
 export const deleteUser = (id) => API.delete(`/admin/users/${id}`);
 export const getCommandCenterOverview = () => API.get('/admin/command-center');
+export const getVerificationQueue = () => API.get('/admin/verification-queue');
 
 
 export default API;

@@ -228,3 +228,41 @@ exports.getUserProfile = async (req, res) => {
     res.status(500).json({ message: 'Failed to load user profile' });
   }
 };
+
+// GET /api/admin/verification-queue (Unified queue across all 3 data loggings)
+exports.getUnifiedVerificationQueue = async (req, res) => {
+  try {
+    const pendingFilter = {
+      $or: [{ status: 'pending' }, { status: { $exists: false } }, { status: null }],
+      isForeignLegacy: { $ne: true }
+    };
+
+    const [surveys, species, restorations] = await Promise.all([
+      Survey.find(pendingFilter)
+        .populate('surveyedBy', 'name email role')
+        .populate('siteId', 'name region coordinates')
+        .sort({ date: -1, createdAt: -1 }),
+      Species.find(pendingFilter)
+        .populate('recordedBy', 'name email role')
+        .populate('linkedSurvey', 'location date')
+        .sort({ sightingDate: -1, createdAt: -1 }),
+      Restoration.find(pendingFilter)
+        .populate('loggedBy', 'name email role')
+        .populate('siteId', 'name region')
+        .sort({ datePlanted: -1, createdAt: -1 })
+    ]);
+
+    const totalPending = surveys.length + species.length + restorations.length;
+
+    res.json({
+      surveys,
+      species,
+      restorations,
+      totalPending
+    });
+  } catch (error) {
+    console.error('getUnifiedVerificationQueue error:', error);
+    res.status(500).json({ message: 'Failed to fetch unified verification queue' });
+  }
+};
+

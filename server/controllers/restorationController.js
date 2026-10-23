@@ -8,7 +8,13 @@ exports.getRestorations = async (req, res) => {
     const { status, page = 1, limit = 50 } = req.query;
     const filter = { isForeignLegacy: { $ne: true } };
 
-    if (status) filter.status = status;
+    if (status) {
+      if (status === 'pending') {
+        filter.$or = [{ status: 'pending' }, { status: { $exists: false } }, { status: null }];
+      } else {
+        filter.status = status;
+      }
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const total = await Restoration.countDocuments(filter);

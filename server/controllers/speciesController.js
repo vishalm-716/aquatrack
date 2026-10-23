@@ -12,7 +12,16 @@ exports.getSpecies = async (req, res) => {
 
     if (type) filter.type = type;
     if (location) filter.location = { $regex: location, $options: 'i' };
-    if (status) filter.status = status;
+    if (status) {
+      if (status === 'pending') {
+        filter.$and = filter.$and || [];
+        filter.$and.push({
+          $or: [{ status: 'pending' }, { status: { $exists: false } }, { status: null }]
+        });
+      } else {
+        filter.status = status;
+      }
+    }
 
     if (search) {
       filter.$and = [
